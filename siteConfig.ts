@@ -5,7 +5,7 @@ export const siteConfig = {
   title: "流雲 の 宝藏之地",
   faviconUrl: "https://bu.dusays.com/2026/03/24/69c1e38ac1846.jpg",
   authorName: "流雲",
-  bio: "在代码、学术与分子动力学模拟间穿梭的普通人。近期正埋头于 GROMACS 模拟研究与神经网络计算。",
+  bio: "这里是流雲的个人博客。",
 
   navTitle: "流雲",
 
@@ -46,7 +46,7 @@ export const siteConfig = {
 
 
   // 👇 【新增】：全局背景弹幕配置
-  danmakuList: ["在干嘛呢？", "有笨蛋嘛？", "前方高能反应！", "GROMACS 跑起来了吗？", "MD 模拟什么时候才能出图啊", "Graph Neural Networks 炼丹中...", "BUG 修复进度 99%", "今天背单词了吗？", "Tailwind CSS 拯救前端", "写算法中", "睡大觉中", "到底在干嘛？"],
+  danmakuList: ["欢迎来到流雲的博客", "今天也要好好记录", "写点自己的故事", "保持热爱", "慢慢更新中"],
   gitalkConfig: {
     clientID: "",
     clientSecret: "",
