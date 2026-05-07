@@ -25,7 +25,7 @@ export default function FriendsBoard() {
   const [isCopied, setIsCopied] = useState(false);
 
   // 预设的申请格式
-  const applyFormat = `名称：XingHuiSamaの宝藏之地\n简介：今天我也要学习吗\n链接：https://www.xinghuisama.top\n头像：https://bu.dusays.com/2026/03/24/69c1e38ac1846.jpg`;
+  const applyFormat = `名称：流雲の宝藏之地\n简介：今天我也要学习吗\n链接：\n头像：https://bu.dusays.com/2026/03/24/69c1e38ac1846.jpg`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(applyFormat);
