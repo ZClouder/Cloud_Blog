@@ -208,9 +208,9 @@ export default function MomentList({ moments, authorName, avatarUrl }: { moments
     <div className="w-[90%] max-w-6xl mx-auto py-8 mt-24 relative z-10 flex-1 flex flex-col min-h-[85vh]">
 
       <div className="mb-8 text-center relative">
-        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">生活动态</motion.h1>
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">博客</motion.h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium italic opacity-80 flex items-center justify-center gap-2">
-          <Sparkles size={14} className="text-indigo-500" /> “ 在代码之外捕捉瞬间的温度 ”
+          <Sparkles size={14} className="text-indigo-500" /> “ 分类收藏每一篇值得记录的文档 ”
         </p>
       </div>
 
