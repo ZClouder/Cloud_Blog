@@ -13,10 +13,38 @@ export const metadata = {
 
 type Moment = {
   id: string;
+  slug: string;
+  category: string;
+  title: string;
   date: string;
   location: string;
   images: string[];
   content: string;
+  excerpt: string;
+};
+
+const getTitle = (content: string, fallback: string, frontmatterTitle?: string) => {
+  if (frontmatterTitle) return frontmatterTitle;
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) return titleMatch[1].trim();
+  const firstLine = content.split(/\r?\n/).map(line => line.trim()).find(Boolean);
+  if (firstLine && firstLine.length <= 80) return firstLine;
+  return fallback.replace(/[-_]/g, ' ');
+};
+
+const getExcerpt = (content: string) => {
+  return content
+    .replace(/^\s*#\s+.+\r?\n+/, '')
+    .replace(/^\s*([^\n#][^\n]{0,79})\r?\n{2,}/, '')
+    .replace(/^#{1,6}\s+.+$/gm, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_>#-]/g, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
+    .slice(0, 180);
 };
 
 export default function MomentsPage() {
@@ -42,14 +70,22 @@ export default function MomentsPage() {
         const filePaths = walkMomentFiles(dir);
         filePaths.forEach(fullPath => {
           const fileName = path.relative(dir, fullPath).replace(/\\/g, '/');
+          const id = fileName.replace(/\.md$/, '');
+          const slugParts = id.split('/');
+          const fallbackTitle = slugParts[slugParts.length - 1] || 'untitled';
+          const category = slugParts.length > 1 ? slugParts[0] : 'uncategorized';
           const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'));
 
           allMoments.push({
-            id: fileName.replace(/\.md$/, ''),
+            id,
+            slug: id,
+            category,
+            title: getTitle(content, fallbackTitle, data.title),
             date: data.date || '1970-01-01',
             location: data.location || '',
             images: Array.isArray(data.images) ? data.images : [],
-            content: content.trim()
+            content: content.trim(),
+            excerpt: getExcerpt(content)
           });
         });
       }

@@ -1,9 +1,40 @@
 "use client";
 
+import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { MapPin, MessageSquare, Clock, Sparkles, Search, ArrowDownAZ, ArrowUpZA, ChevronLeft, ChevronRight, Ghost } from 'lucide-react';
+import { MapPin, MessageSquare, Clock, Sparkles, Search, ArrowDownAZ, ArrowUpZA, ChevronLeft, ChevronRight, Ghost, FolderOpen, BookOpen } from 'lucide-react';
 import MomentComments from '../../components/MomentComments';
+
+type Moment = {
+  id: string;
+  slug: string;
+  category: string;
+  title: string;
+  date: string;
+  location: string;
+  images: string[];
+  content: string;
+  excerpt: string;
+};
+
+type Category = {
+  key: string;
+  label: string;
+  count: number;
+};
+
+const categoryLabels: Record<string, string> = {
+  'bug-fixes': '排障记录',
+  deployment: '部署记录',
+  notes: '随笔记录',
+  life: '生活碎片',
+  uncategorized: '未分类'
+};
+
+function getCategoryLabel(category: string) {
+  return categoryLabels[category] || category.replace(/[-_]/g, ' ');
+}
 
 function timeAgo(dateStr: string) {
   const date = new Date(dateStr);
@@ -15,20 +46,40 @@ function timeAgo(dateStr: string) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function MomentList({ moments, authorName, avatarUrl }: any) {
+export default function MomentList({ moments, authorName, avatarUrl }: { moments: Moment[], authorName: string, avatarUrl: string }) {
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [lightbox, setLightbox] = useState<{ images: string[], index: number } | null>(null);
+
+  const categories = useMemo<Category[]>(() => {
+    const counts = new Map<string, number>();
+    moments.forEach(moment => counts.set(moment.category, (counts.get(moment.category) || 0) + 1));
+
+    return [
+      { key: 'all', label: '全部', count: moments.length },
+      ...Array.from(counts.entries())
+        .sort(([a], [b]) => getCategoryLabel(a).localeCompare(getCategoryLabel(b), 'zh-CN'))
+        .map(([key, count]) => ({ key, label: getCategoryLabel(key), count }))
+    ];
+  }, [moments]);
 
   const processedMoments = useMemo(() => {
     let result = moments ? [...moments] : [];
 
+    if (selectedCategory !== 'all') {
+      result = result.filter(moment => moment.category === selectedCategory);
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
-      result = result.filter(m =>
-        (m.content || '').toLowerCase().includes(query) ||
-        (m.location || '').toLowerCase().includes(query)
+      result = result.filter(moment =>
+        (moment.title || '').toLowerCase().includes(query) ||
+        (moment.excerpt || '').toLowerCase().includes(query) ||
+        (moment.content || '').toLowerCase().includes(query) ||
+        (moment.location || '').toLowerCase().includes(query) ||
+        getCategoryLabel(moment.category).toLowerCase().includes(query)
       );
     }
 
@@ -38,7 +89,7 @@ export default function MomentList({ moments, authorName, avatarUrl }: any) {
       return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
     });
     return result;
-  }, [moments, searchQuery, sortOrder]);
+  }, [moments, searchQuery, sortOrder, selectedCategory]);
 
   const nextImg = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -55,31 +106,29 @@ export default function MomentList({ moments, authorName, avatarUrl }: any) {
   const renderImages = (images: string[]) => {
     if (!images || images.length === 0) return null;
     const count = images.length;
+    const visibleImages = images.slice(0, 3);
 
     if (count === 1) {
       return (
-        <div className="mt-8 flex justify-center w-full">
-          <div onClick={() => setLightbox({ images, index: 0 })} className="max-w-[280px] overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 shadow-xl cursor-zoom-in group">
-            <img src={images[0]} alt="moment" className="w-full h-auto max-h-[400px] object-contain group-hover:scale-105 transition-transform duration-500" />
+        <div className="mt-6 w-full">
+          <div onClick={() => setLightbox({ images, index: 0 })} className="overflow-hidden rounded-2xl border border-slate-200/50 dark:border-white/10 shadow-lg cursor-zoom-in group bg-slate-100/30 dark:bg-slate-700/20">
+            <img src={images[0]} alt="moment" className="w-full h-auto max-h-[260px] object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
         </div>
       );
     }
 
-    const columns = count === 4 ? 2 : 3;
-    const maxWidth = count === 4 ? '210px' : '320px';
-
     return (
-      <div className="w-full flex justify-center mt-8">
-        <div className="grid gap-2 mx-auto" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)`, width: '100%', maxWidth: maxWidth }}>
-          {images.slice(0, 9).map((src, idx) => {
-            const isLastVisible = idx === 8 && count > 9;
+      <div className="w-full mt-6">
+        <div className="grid grid-cols-3 gap-2">
+          {visibleImages.map((src, idx) => {
+            const isLastVisible = idx === visibleImages.length - 1 && count > visibleImages.length;
             return (
               <div key={idx} onClick={() => setLightbox({ images, index: idx })} className="group relative aspect-square overflow-hidden rounded-xl bg-slate-200/20 dark:bg-slate-700/20 border border-slate-200/50 dark:border-white/10 cursor-zoom-in">
                 <img src={src} alt="moment" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 {isLastVisible && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white backdrop-blur-[2px]">
-                    <span className="text-xl font-black">+{count - 9}</span>
+                    <span className="text-xl font-black">+{count - visibleImages.length}</span>
                   </div>
                 )}
               </div>
@@ -90,36 +139,56 @@ export default function MomentList({ moments, authorName, avatarUrl }: any) {
     );
   };
 
-  const renderMomentCard = (moment: any) => (
-    <motion.div
+  const renderMomentCard = (moment: Moment) => (
+    <motion.article
       key={moment.id}
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.4, type: 'spring', stiffness: 100 }}
-      className="flex flex-col bg-white/60 dark:bg-slate-800/50 backdrop-blur-xl rounded-[40px] shadow-xl border border-white/40 dark:border-white/10 p-8 md:p-10 transition-shadow hover:shadow-2xl overflow-hidden relative group w-full"
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.35, type: 'spring', stiffness: 100 }}
+      className="flex flex-col bg-white/65 dark:bg-slate-800/55 backdrop-blur-xl rounded-3xl shadow-xl border border-white/45 dark:border-white/10 p-7 md:p-8 transition-shadow hover:shadow-2xl overflow-hidden relative group w-full"
     >
-      <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-200/50 dark:border-slate-700/50 relative">
-        <div className="w-14 h-14 shrink-0 rounded-2xl overflow-hidden shadow-md border-2 border-white dark:border-slate-700">
+      <div className="flex items-start gap-4 mb-6 pb-5 border-b border-slate-200/50 dark:border-slate-700/50 relative">
+        <div className="w-12 h-12 shrink-0 rounded-2xl overflow-hidden shadow-md border-2 border-white dark:border-slate-700">
           <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
         </div>
-        <div className="flex flex-col">
-          <h3 className="text-lg font-black text-[#576b95] dark:text-[#7f99cc] tracking-wide">{authorName}</h3>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-base font-black text-[#576b95] dark:text-[#7f99cc] tracking-wide">{authorName}</h3>
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[10px] font-black text-indigo-600 dark:text-indigo-400 border border-indigo-500/10">
+              <FolderOpen size={11} /> {getCategoryLabel(moment.category)}
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-400 font-bold mt-1"><Clock size={12} /> {timeAgo(moment.date)}</div>
         </div>
       </div>
-      <p className="text-slate-800 dark:text-slate-200 text-[16px] leading-relaxed whitespace-pre-wrap font-medium break-words">{moment.content}</p>
+
+      <Link href={`/moments/${moment.slug}`} className="group/title">
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-snug tracking-tight group-hover/title:text-indigo-600 dark:group-hover/title:text-indigo-400 transition-colors">
+          {moment.title}
+        </h2>
+      </Link>
+
+      <p className="mt-4 text-slate-700 dark:text-slate-300 text-[15px] leading-8 font-medium break-words line-clamp-4">
+        {moment.excerpt || '这篇记录暂时没有摘要。'}
+      </p>
 
       {renderImages(moment.images)}
 
-      <div className="mt-10 flex items-center justify-between">
+      <div className="mt-8 flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
-          {moment.location && <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 max-w-full truncate border border-indigo-500/10"><MapPin size={12} /> {moment.location}</span>}
+          {moment.location && <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full bg-slate-500/10 text-slate-500 dark:text-slate-300 max-w-full truncate border border-slate-500/10"><MapPin size={12} /> {moment.location}</span>}
         </div>
-        <button onClick={() => setOpenCommentId(openCommentId === moment.id ? null : moment.id)} className={`w-10 h-10 flex items-center justify-center shrink-0 rounded-full transition-all shadow-sm ${openCommentId === moment.id ? 'bg-indigo-500 text-white shadow-indigo-500/30 rotate-12' : 'bg-white/80 dark:bg-slate-800 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-          <MessageSquare size={16} />
-        </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={`/moments/${moment.slug}`} className="h-10 inline-flex items-center gap-2 rounded-full bg-indigo-500 px-4 text-xs font-black text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-colors">
+            <BookOpen size={15} /> 阅读全文
+          </Link>
+          <button onClick={() => setOpenCommentId(openCommentId === moment.id ? null : moment.id)} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all shadow-sm ${openCommentId === moment.id ? 'bg-indigo-500 text-white shadow-indigo-500/30 rotate-12' : 'bg-white/80 dark:bg-slate-800 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+            <MessageSquare size={16} />
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -127,28 +196,46 @@ export default function MomentList({ moments, authorName, avatarUrl }: any) {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1, marginTop: 24 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl p-6 border border-slate-200/50 dark:border-slate-700/50 relative shadow-inner">
               <div className="absolute -top-2 right-8 w-4 h-4 bg-slate-50/50 dark:bg-slate-900/50 rotate-45 border-l border-t border-slate-200/50"></div>
-              <MomentComments id={`/moments/${moment.id}`} />
+              <MomentComments id={`/moments/${moment.slug}`} />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </motion.article>
   );
 
   return (
-    <div className="w-[90%] max-w-6xl mx-auto py-10 mt-28 relative z-10 flex-1 flex flex-col min-h-[85vh]">
+    <div className="w-[90%] max-w-6xl mx-auto py-8 mt-24 relative z-10 flex-1 flex flex-col min-h-[85vh]">
 
-      <div className="mb-14 text-center relative">
-        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">生活动态</motion.h1>
+      <div className="mb-8 text-center relative">
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">生活动态</motion.h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium italic opacity-80 flex items-center justify-center gap-2">
           <Sparkles size={14} className="text-indigo-500" /> “ 在代码之外捕捉瞬间的温度 ”
         </p>
       </div>
 
-      <div className="mb-16 flex flex-col items-center gap-8">
+      <div className="mb-8 flex flex-col items-center gap-4">
         <div className="relative w-full max-w-lg group">
           <Search className="w-6 h-6 absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors z-20 pointer-events-none" />
-          <input type="text" placeholder="搜寻被遗忘的记忆..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-white/40 dark:border-white/5 rounded-2xl px-6 py-4 pl-14 text-slate-800 dark:text-white shadow-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium relative z-10" />
+          <input type="text" placeholder="搜寻标题、分类或内容..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/45 dark:bg-slate-800/45 backdrop-blur-xl border border-white/40 dark:border-white/5 rounded-2xl px-6 py-4 pl-14 text-slate-800 dark:text-white shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-medium relative z-10" />
+        </div>
+
+        <div className="w-full overflow-x-auto pb-1 custom-scrollbar">
+          <div className="mx-auto flex w-max max-w-full items-center gap-2 rounded-2xl bg-white/45 dark:bg-slate-800/45 p-1.5 border border-white/50 dark:border-white/10 shadow-sm">
+            {categories.map(category => {
+              const active = selectedCategory === category.key;
+              return (
+                <button
+                  key={category.key}
+                  onClick={() => setSelectedCategory(category.key)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all whitespace-nowrap ${active ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-indigo-500 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+                >
+                  {category.label}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? 'bg-white/20 text-white' : 'bg-slate-500/10 text-slate-400'}`}>{category.count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex bg-white/50 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-white/50 dark:border-white/10 shadow-sm relative z-10">
@@ -182,8 +269,8 @@ export default function MomentList({ moments, authorName, avatarUrl }: any) {
                 <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse"></div>
                 <Ghost size={48} className="text-indigo-500 relative z-10" strokeWidth={1.5} />
               </div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">{searchQuery ? "没找到相关记忆" : "朋友圈空空如也"}</h2>
-              <p className="text-slate-500 dark:text-slate-400 font-medium text-lg leading-relaxed px-4">{searchQuery ? `尝试精简你的搜索词，或者换个心情再次出发。` : `还没有记录下任何生活碎片呢。`}</p>
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">{searchQuery ? "没找到相关记录" : "当前分类暂无记录"}</h2>
+              <p className="text-slate-500 dark:text-slate-400 font-medium text-lg leading-relaxed px-4">{searchQuery ? `尝试精简你的搜索词，或者换个分类再次查看。` : `这个目录下还没有保存文档。`}</p>
             </motion.div>
           </div>
         )}
