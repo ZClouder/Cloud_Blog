@@ -11,8 +11,16 @@ export const metadata = {
   description: "生活动态与瞬间记录",
 };
 
+type Moment = {
+  id: string;
+  date: string;
+  location: string;
+  images: string[];
+  content: string;
+};
+
 export default function MomentsPage() {
-  let allMoments: any[] = [];
+  let allMoments: Moment[] = [];
 
   try {
     // 🌟 终极防漏绝招：同时扫描两个可能的文件夹，把所有的说说都抓出来！
@@ -21,18 +29,26 @@ export default function MomentsPage() {
       path.join(process.cwd(), 'moments')
     ];
 
+    const walkMomentFiles = (dir: string): string[] => {
+      return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) return walkMomentFiles(fullPath);
+        return entry.isFile() && entry.name.endsWith('.md') ? [fullPath] : [];
+      });
+    };
+
     possibleDirs.forEach(dir => {
       if (fs.existsSync(dir)) {
-        const fileNames = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
-        fileNames.forEach(fileName => {
-          const fullPath = path.join(dir, fileName);
+        const filePaths = walkMomentFiles(dir);
+        filePaths.forEach(fullPath => {
+          const fileName = path.relative(dir, fullPath).replace(/\\/g, '/');
           const { data, content } = matter(fs.readFileSync(fullPath, 'utf8'));
 
           allMoments.push({
             id: fileName.replace(/\.md$/, ''),
             date: data.date || '1970-01-01',
             location: data.location || '',
-            images: data.images || [],
+            images: Array.isArray(data.images) ? data.images : [],
             content: content.trim()
           });
         });
